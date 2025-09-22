@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0e7ff, #dbeafe);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .container:hover {
+            transform: translateY(-4px);
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 24px;
+        }
+        .input-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1f2937;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .color-group {
+            display: flex;
+            gap: 16px;
+            justify-content: space-between;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            font-weight: 500;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-top: 16px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        #qrCanvas {
+            margin: 24px 0;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .toggle-link {
+            color: #3b82f6;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 12px;
+            display: inline-block;
+        }
+        .toggle-link:hover {
+            color: #2563eb;
+        }
+        #logoutBtn {
+            background: #ef4444;
+        }
+        #logoutBtn:hover {
+            background: #dc2626;
+        }
+        @media (max-width: 480px) {
+            .container {
+                padding: 24px;
+            }
+            h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login/Signup Container -->
+    <div class="container" id="authContainer">
+        <div id="loginSection">
+            <h2>Login</h2>
+            <div class="input-group">
+                <label for="loginUsername">Username</label>
+                <input type="text" id="loginUsername" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter password">
+            </div>
+            <button onclick="login()">Login</button>
+            <div class="toggle-link" onclick="showSignup()">Don't have an account? Sign up</div>
+        </div>
+        <div id="signupSection" style="display: none;">
+            <h2>Sign Up</h2>
+            <div class="input-group">
+                <label for="signupUsername">Username</label>
+                <input type="text" id="signupUsername" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label for="signupPassword">Password</label>
+                <input type="password" id="signupPassword" placeholder="Enter password">
+            </div>
+            <button onclick="signup()">Sign Up</button>
+            <div class="toggle-link" onclick="showLogin()">Already have an account? Login</div>
+        </div>
+    </div>
+
+    <!-- QR Generator Container -->
+    <div class="container" id="qrContainer" style="display: none;">
+        <h2>QR Code Generator</h2>
+        <button id="logoutBtn" onclick="logout()">Logout</button>
+        <div class="input-group">
+            <label for="linkInput">Enter URL</label>
+            <input type="text" id="linkInput" placeholder="https://example.com">
+        </div>
+        <div class="input-group color-group">
+            <div>
+                <label for="qrFgColor">Foreground Color</label>
+                <input type="color" id="qrFgColor" value="#000000">
+            </div>
+            <div>
+                <label for="qrBgColor">Background Color</label>
+                <input type="color" id="qrBgColor" value="#ffffff">
+            </div>
+        </div>
+        <div class="input-group">
+            <label for="qrSize">QR Size (px)</label>
+            <input type="number" id="qrSize" value="200" min="100" max="500">
+        </div>
+        <button onclick="generateQR()">Generate QR Code</button>
+        <button onclick="downloadQR()" id="downloadBtn" style="display: none;">Download QR Code</button>
+        <div id="qrCanvas"></div>
+    </div>
+
+    <script>
+        let qrCodeInstance = null;
+        let canvas = null;
+        const users = JSON.parse(localStorage.getItem('users')) || {};
+
+        // Simple hash function for demo (not secure for production)
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return hash;
+        }
+
+        // Calculate color contrast (simplified)
+        function getContrast(hex1, hex2) {
+            const lum1 = getLuminance(hex1);
+            const lum2 = getLuminance(hex2);
+            return Math.abs(lum1 - lum2);
+        }
+
+        function getLuminance(hex) {
+            hex = hex.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16) / 255;
+            const g = parseInt(hex.substr(2, 2), 16) / 255;
+            const b = parseInt(hex.substr(4, 2), 16) / 255;
+            return 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+
+        // Validate URL
+        function isValidURL(url) {
+            const pattern = /^(https?:\/\/)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/.*)?$/;
+            return pattern.test(url) && url.length <= 2000; // Limit URL length for scannability
+        }
+
+        function signup() {
+            const username = document.getElementById('signupUsername').value.trim();
+            const password = document.getElementById('signupPassword').value;
+
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+
+            if (users[username]) {
+                alert('Username already exists');
+                return;
+            }
+
+            users[username] = simpleHash(password);
+            localStorage.setItem('users', JSON.stringify(users));
+            alert('Sign up successful! Please login.');
+            showLogin();
+        }
+
+        function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+
+            if (users[username] && users[username] === simpleHash(password)) {
+                localStorage.setItem('loggedInUser', username);
+                showQRGenerator();
+            } else {
+                alert('Invalid username or password');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('loggedInUser');
+            document.getElementById('authContainer').style.display = 'block';
+            document.getElementById('qrContainer').style.display = 'none';
+            showLogin();
+        }
+
+        function showLogin() {
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('signupSection').style.display = 'none';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function showSignup() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('signupSection').style.display = 'block';
+            document.getElementById('signupUsername').value = '';
+            document.getElementById('signupPassword').value = '';
+        }
+
+        function showQRGenerator() {
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('qrContainer').style.display = 'block';
+        }
+
+        function generateQR() {
+            const link = document.getElementById('linkInput').value.trim();
+            const fgColor = document.getElementById('qrFgColor').value;
+            const bgColor = document.getElementById('qrBgColor').value;
+            const size = parseInt(document.getElementById('qrSize').value);
+
+            // Validate inputs
+            if (!link) {
+                alert('Please enter a valid URL (e.g., https://example.com)');
+                return;
+            }
+
+            if (!isValidURL(link)) {
+                alert('Please enter a valid URL starting with http:// or https:// and not too long');
+                return;
+            }
+
+            if (isNaN(size) || size < 100 || size > 500) {
+                alert('Please enter a size between 100 and 500 pixels');
+                return;
+            }
+
+            // Check color contrast
+            if (getContrast(fgColor, bgColor) < 0.4) {
+                alert('Low contrast between foreground and background colors. For best scannability, use a dark foreground (e.g., black) and light background (e.g., white).');
+                return;
+            }
+
+            // Clear previous QR code
+            document.getElementById('qrCanvas').innerHTML = '';
+            qrCodeInstance = new QRCode(document.getElementById('qrCanvas'), {
+                text: link,
+                width: size,
+                height: size,
+                colorDark: fgColor,
+                colorLight: bgColor,
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Wait for QR code to render
+            setTimeout(() => {
+                canvas = document.getElementById('qrCanvas').querySelector('canvas');
+                if (!canvas) {
+                    alert('Error generating QR code. Please try again.');
+                    return;
+                }
+
+                document.getElementById('downloadBtn').style.display = 'block';
+            }, 100);
+        }
+
+        function downloadQR() {
+            if (!canvas) {
+                alert('No QR code to download');
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = 'qrcode.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Check if user is logged in on page load
+        window.onload = function() {
+            if (localStorage.getItem('loggedInUser')) {
+                showQRGenerator();
+            } else {
+                showLogin();
+            }
+        };
+    </script>
+</body>
+</html>
